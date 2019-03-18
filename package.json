@@ -5,6 +5,7 @@
   "license": "MIT",
   "private": true,
   "dependencies": {
+    "dotenv": "^7.0.0",
     "steam-user": "^4.5.0"
   }
 }
