@@ -23,44 +23,38 @@ client.chat.on('friendMessage', msg => {
 });
 
 let spellBuf = [];
-let fmtBuf = [];
 let letter = /[A-Za-z]/;
-let letter_g = new RegExp(letter.source, 'g');
 
 function onMessage(message) {
     let counter = [];
 
     for (const c of [...message, '\n']) {
         if (letter.test(c)) {
-            if (spellBuf.length == 3) {
+            if (spellBuf.length == 3)
                 spellBuf.shift();
-                do fmtBuf.shift();
-                while (!letter.test(fmtBuf[0]));
-            }
-            spellBuf.push(c);
-        }
-        if (spellBuf.length) {
-            fmtBuf.push(c);
+            spellBuf.push([c]);
+        } else if (spellBuf.length) {
+            spellBuf[spellBuf.length-1].push(c);
         }
         if (c == '!') {
-            let spell = spellBuf.join('');
-            let fmt = fmtBuf.join('');
-            let res = counterSpell(spell, fmt);
-            if (res) counter.push(res);
+            if (counterSpell(spellBuf)) {
+                let r = spellBuf.map(e => e.join('')).join('');
+                counter.push(r);
+            }
             spellBuf = [];
-            fmtBuf = [];
         }
     }
 
     return counter.join(' ');
 }
 
-function counterSpell(spell, fmt) {
+function counterSpell(buf) {
+    let spell = buf.map(e => e[0]).join('');
     let counter = spells.counter(spell);
     if (counter) {
-        let i = 0;
-        fmt = fmt.replace(letter_g, () => counter[i++]);
-        return fmt;
+        for (let i = 0; i < buf.length; i++)
+            buf[i][0] = counter[i];
+        return true;
     }
-    return null;
+    return false;
 }
