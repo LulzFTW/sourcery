@@ -14,7 +14,7 @@ client.on('loggedOn', () => {
 });
 
 client.chat.on('friendMessage', msg => {
-    let text = msg.message;
+    let text = msg.message.normalize('NFD');
     let counter = text.split(/\n+/).map(onMessage)
         .filter(Boolean).join('\n');
     if (counter) {
@@ -22,34 +22,45 @@ client.chat.on('friendMessage', msg => {
     }
 });
 
-let buf = [];
-function onMessage(message) {
-    let counter = null;
+let spellBuf = [];
+let fmtBuf = [];
+let letter = /[A-Za-z]/;
+let letter_g = new RegExp(letter.source, 'g');
 
-    if (message.length == 1) {
-        if (message == "!") {
-            counter = counterSpell(buf.join(''), true);
-            buf = [];
-        } else {
-            buf.push(message.charAt(0));
+function onMessage(message) {
+    let counter = [];
+
+    for (const c of [...message, '\n']) {
+        if (letter.test(c)) {
+            if (spellBuf.length == 3) {
+                spellBuf.shift();
+                do fmtBuf.shift();
+                while (!letter.test(fmtBuf[0]));
+            }
+            spellBuf.push(c);
         }
-    } else {
-        let match = message.match(/\w+!/g) || [];
-        counter = match.map(m => counterSpell(m.slice(0, -1), false))
-            .filter(Boolean).join(' ');
-        buf = [];
+        if (spellBuf.length) {
+            fmtBuf.push(c);
+        }
+        if (c == '!') {
+            let spell = spellBuf.join('');
+            let fmt = fmtBuf.join('');
+            let res = counterSpell(spell, fmt);
+            if (res) counter.push(res);
+            spellBuf = [];
+            fmtBuf = [];
+        }
     }
 
-    return counter;
+    return counter.join(' ');
 }
 
-function counterSpell(spell, newline) {
+function counterSpell(spell, fmt) {
     let counter = spells.counter(spell);
     if (counter) {
-        let msg = counter + '!';
-        if (newline)
-            msg = msg.split('').join('\n');
-        return msg;
+        let i = 0;
+        fmt = fmt.replace(letter_g, () => counter[i++]);
+        return fmt;
     }
     return null;
 }
